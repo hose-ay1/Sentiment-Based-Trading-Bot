@@ -5,10 +5,11 @@ from lumibot.traders import Trader
 from datetime import datetime, timedelta
 from alpaca_trade_api import REST 
 from finbert_utils import estimate_sentiment
+import math
 
-API_KEY = "PK57G7S4QC4RFMU5SKLT" 
-API_SECRET = "0G222i4XaMANhA9Nbju2ks4ihAXAMbZoc6Xvhmab" 
-BASE_URL = "https://paper-api.alpaca.markets/v2"
+API_KEY = 
+API_SECRET = 
+BASE_URL =
 
 ALPACA_CREDS = {
     "API_KEY": API_KEY, 
@@ -24,10 +25,14 @@ class MultiStockSentimentTrader(Strategy):
         self.cash_at_risk_per_symbol = cash_at_risk_per_symbol
         self.api = REST(base_url=BASE_URL, key_id=API_KEY, secret_key=API_SECRET)
 
-    def position_sizing(self, symbol): 
-        cash = self.get_cash() * self.cash_at_risk_per_symbol
+    def position_sizing(self, symbol, probability): 
+        cash = self.get_cash()
+        cash_at_risk = cash * self.cash_at_risk_per_symbol
+        cash_for_use = cash_at_risk * (probability * 10 - 9)
         last_price = self.get_last_price(symbol)
-        quantity = round(cash / last_price, 0)
+        quantity = math.floor(cash_for_use / last_price, 0)
+        cash_used = quanity * last_price
+        cash -= cash_used
         return cash, last_price, quantity
 
     def get_dates(self): 
@@ -51,7 +56,7 @@ class MultiStockSentimentTrader(Strategy):
             probability, sentiment = self.get_sentiment(symbol)
 
             if cash > last_price: 
-                if sentiment == "positive" and probability > .999: 
+                if sentiment == "positive" and probability > .9: 
                     if self.last_trade[symbol] == "sell": 
                         self.sell_all(symbol) 
                     order = self.create_order(
@@ -64,7 +69,7 @@ class MultiStockSentimentTrader(Strategy):
                     )
                     self.submit_order(order) 
                     self.last_trade[symbol] = "buy"
-                elif sentiment == "negative" and probability > .999: 
+                elif sentiment == "negative" and probability > .9: 
                     if self.last_trade[symbol] == "buy": 
                         self.sell_all(symbol) 
                     order = self.create_order(
